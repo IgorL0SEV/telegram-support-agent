@@ -1,0 +1,60 @@
+services:
+  support-db:
+    image: supabase/postgres:15.8.1.060
+    container_name: openclaw-support-supabase-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "54324:5432"
+    volumes:
+      - support_supabase_db_data:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U supabase_admin -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  meta:
+    image: supabase/postgres-meta:v0.84.2
+    container_name: openclaw-support-pg-meta
+    restart: unless-stopped
+    depends_on:
+      support-db:
+        condition: service_healthy
+    environment:
+      PG_META_PORT: 8080
+      PG_META_DB_HOST: support-db
+      PG_META_DB_PORT: 5432
+      PG_META_DB_NAME: postgres
+      PG_META_DB_USER: supabase_admin
+      PG_META_DB_PASSWORD: postgres
+
+  studio:
+    image: supabase/studio:20241028-a265374
+    container_name: openclaw-support-studio
+    restart: unless-stopped
+    ports:
+      - "54325:3000"
+    depends_on:
+      - meta
+    environment:
+      STUDIO_PG_META_URL: http://meta:8080
+      POSTGRES_PASSWORD: postgres
+      DEFAULT_ORGANIZATION_NAME: OpenClaw
+      DEFAULT_PROJECT_NAME: support_db
+      SUPABASE_URL: http://localhost:54325
+      SUPABASE_PUBLIC_URL: http://localhost:54325
+      SUPABASE_ANON_KEY: local-anon-key
+      SUPABASE_SERVICE_KEY: local-service-key
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"const os=require('os'); fetch('http://'+os.hostname()+':3000').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+volumes:
+  support_supabase_db_data:
