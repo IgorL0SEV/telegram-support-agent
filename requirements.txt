@@ -1,3 +1,4 @@
 # Dependencies
-psycopg2-binary>=2.9.0
+supabase>=2.0.0
 python-dotenv>=1.0.0
+psycopg2-binary>=2.9.0  # For init_db.py (direct PostgreSQL connection)
